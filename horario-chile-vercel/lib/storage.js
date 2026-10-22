@@ -3,8 +3,8 @@ const { DEFAULT_CONFIG } = require('./schedule');
 const KEY = 'horario-chile:config';
 
 async function command(args) {
-  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  const url = process.env.UPSTASH_REDIS_REST_KV_REST_API_URL;
+  const token = process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN;
   if (!url || !token) throw new Error('STORAGE_NOT_CONFIGURED');
   const response = await fetch(url, {
     method: 'POST',
