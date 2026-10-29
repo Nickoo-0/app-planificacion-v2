@@ -1,1 +1,107 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Planificación de horario</title><link rel="stylesheet" href="/styles.css"></head><body><header><div><h1>Grupo de planificación de horario</h1><p>Zona horaria: America/Santiago</p></div><div id="status" class="status">Consultando…</div></header><main><section class="card"><div class="section-title"><div><h2>Horario semanal</h2><p>Define uno o más tramos hábiles por día.</p></div><button id="save">Guardar cambios</button></div><div id="week" class="week"></div></section><section class="card"><div class="section-title"><div><h2>Feriados</h2><p>Una fecha registrada aquí se considera inhábil.</p></div><button id="addHoliday" class="secondary">Agregar feriado</button></div><div id="holidays"></div></section><section class="card"><div class="section-title"><div><h2>Excepciones por fecha</h2><p>Cierra todo el día, cierra un tramo o abre un tramo extraordinario.</p></div><button id="addException" class="secondary">Agregar excepción</button></div><div id="exceptions"></div></section><section class="card"><h2>Endpoint para Lynn</h2><code>GET /api/status</code><pre id="sample"></pre></section></main><script src="/app.js"></script></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Planificación de horario</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+
+<body>
+
+<header>
+  <div>
+    <h1>Grupo de planificación de horario</h1>
+    <p>Zona horaria: America/Santiago</p>
+  </div>
+
+  <div id="status" class="status">
+    Consultando…
+  </div>
+</header>
+
+<main>
+
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <h2>Grupo de planificación</h2>
+        <p>Selecciona la planificación asociada a un caso de Lynn.</p>
+      </div>
+
+      <button id="newGroup" class="secondary">
+        + Nuevo grupo
+      </button>
+    </div>
+
+    <div>
+      <label for="groupSelector">
+        Grupo activo
+      </label>
+
+      <select id="groupSelector">
+      </select>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <h2>Horario semanal</h2>
+        <p>Define uno o más tramos hábiles por día.</p>
+      </div>
+
+      <button id="save">
+        Guardar cambios
+      </button>
+    </div>
+
+    <div id="week" class="week"></div>
+  </section>
+
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <h2>Feriados</h2>
+        <p>Una fecha registrada aquí se considera inhábil.</p>
+      </div>
+
+      <button id="addHoliday" class="secondary">
+        Agregar feriado
+      </button>
+    </div>
+
+    <div id="holidays"></div>
+  </section>
+
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <h2>Excepciones por fecha</h2>
+        <p>Cierra todo el día, cierra un tramo o abre un tramo extraordinario.</p>
+      </div>
+
+      <button id="addException" class="secondary">
+        Agregar excepción
+      </button>
+    </div>
+
+    <div id="exceptions"></div>
+  </section>
+
+  <section class="card">
+    <h2>Endpoint para Lynn</h2>
+
+    <code id="endpoint">
+      GET /api/status?caseId=245999
+    </code>
+
+    <pre id="sample"></pre>
+  </section>
+
+</main>
+
+<script src="/app.js"></script>
+
+</body>
+</html>
