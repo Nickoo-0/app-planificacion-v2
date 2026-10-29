@@ -1,1 +1,304 @@
-const names=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];let config;const el=id=>document.getElementById(id);async function request(url,options){const r=await fetch(url,options),j=await r.json();if(!r.ok)throw new Error(j.error||'Error');return j}function interval(item={start:'08:30',end:'18:30'}){const row=document.createElement('div');row.className='interval';row.innerHTML=`<input type="time" value="${item.start}"><input type="time" value="${item.end}"><button class="remove">×</button>`;row.querySelector('button').onclick=()=>row.remove();return row}function renderWeek(){const root=el('week');root.innerHTML='';for(let d=1;d<=7;d++){const day=d%7,box=document.createElement('article');box.className='day';box.dataset.day=day;box.innerHTML=`<h3>${names[day]}</h3><div class="intervals"></div><button class="add">+ Tramo</button>`;const list=box.querySelector('.intervals');config.weekly[day].forEach(i=>list.append(interval(i)));box.querySelector('.add').onclick=()=>list.append(interval());root.append(box)}}function renderHolidays(){const root=el('holidays');root.innerHTML='';config.holidays.sort((a,b)=>a.date.localeCompare(b.date)).forEach(h=>{const row=document.createElement('div');row.className='holiday';row.innerHTML=`<input type="date" value="${h.date}"><input type="text" value="${h.name}" placeholder="Nombre"><button class="remove">Eliminar</button>`;row.querySelector('button').onclick=()=>row.remove();root.append(row)})}function exceptionRow(e={date:'',type:'CLOSE',start:'13:00',end:'15:00',name:''}){const row=document.createElement('div');row.className='exception';row.innerHTML=`<input type="date" value="${e.date}"><select><option value="CLOSE_DAY">Cierre todo el día</option><option value="CLOSE">Cierre por tramo</option><option value="OPEN">Apertura extraordinaria</option></select><input class="time" type="time" value="${e.start||'13:00'}"><input class="time" type="time" value="${e.end||'15:00'}"><input type="text" value="${e.name}" placeholder="Motivo"><button class="remove">Eliminar</button>`;const select=row.querySelector('select');select.value=e.type;const toggle=()=>row.classList.toggle('full-day',select.value==='CLOSE_DAY');select.onchange=toggle;toggle();row.querySelector('button').onclick=()=>row.remove();return row}function renderExceptions(){const root=el('exceptions');root.innerHTML='';config.exceptions.sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>root.append(exceptionRow(e)))}function collect(){document.querySelectorAll('.day').forEach(box=>config.weekly[box.dataset.day]=[...box.querySelectorAll('.interval')].map(r=>({start:r.children[0].value,end:r.children[1].value})));config.holidays=[...document.querySelectorAll('.holiday')].map(r=>({date:r.children[0].value,name:r.children[1].value})).filter(h=>h.date&&h.name);config.exceptions=[...document.querySelectorAll('.exception')].map(r=>{const e={date:r.children[0].value,type:r.children[1].value,start:r.children[2].value,end:r.children[3].value,name:r.children[4].value};if(e.type==='CLOSE_DAY'){delete e.start;delete e.end}return e}).filter(e=>e.date&&e.name)}async function refresh(){const s=await request('/api/status');el('status').textContent=`${s.isOpen?'ABIERTO':'CERRADO'} · ${s.localDate} ${s.localTime}`;el('status').className=`status ${s.isOpen?'open':'closed'}`;el('sample').textContent=JSON.stringify(s,null,2)}el('addHoliday').onclick=()=>{config.holidays.push({date:'',name:''});renderHolidays()};el('addException').onclick=()=>el('exceptions').append(exceptionRow());el('save').onclick=async()=>{try{collect();await request('/api/config?caseId=245999',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify(config)});await refresh();alert('Configuración guardada')}catch(e){alert(e.message)}};(async()=>{config=await request('/api/config?caseId=245999');config.exceptions=config.exceptions||[];renderWeek();renderHolidays();renderExceptions();await refresh();setInterval(refresh,60000)})().catch(e=>alert(e.message));
+const names = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+let config;
+let groups = [];
+let currentCaseId = '245999';
+
+const el = id => document.getElementById(id);
+
+async function request(url, options) {
+  const r = await fetch(url, options);
+  const j = await r.json();
+
+  if (!r.ok) throw new Error(j.error || 'Error');
+
+  return j;
+}
+
+function interval(item = { start: '08:30', end: '18:30' }) {
+  const row = document.createElement('div');
+  row.className = 'interval';
+
+  row.innerHTML = `
+    <input type="time" value="${item.start}">
+    <input type="time" value="${item.end}">
+    <button class="remove">×</button>
+  `;
+
+  row.querySelector('button').onclick = () => row.remove();
+
+  return row;
+}
+
+function renderWeek() {
+  const root = el('week');
+  root.innerHTML = '';
+
+  for (let d = 1; d <= 7; d++) {
+    const day = d % 7;
+    const box = document.createElement('article');
+
+    box.className = 'day';
+    box.dataset.day = day;
+
+    box.innerHTML = `
+      <h3>${names[day]}</h3>
+      <div class="intervals"></div>
+      <button class="add">+ Tramo</button>
+    `;
+
+    const list = box.querySelector('.intervals');
+
+    config.weekly[day].forEach(i => {
+      list.append(interval(i));
+    });
+
+    box.querySelector('.add').onclick = () => {
+      list.append(interval());
+    };
+
+    root.append(box);
+  }
+}
+
+function renderHolidays() {
+  const root = el('holidays');
+  root.innerHTML = '';
+
+  config.holidays
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .forEach(h => {
+      const row = document.createElement('div');
+
+      row.className = 'holiday';
+
+      row.innerHTML = `
+        <input type="date" value="${h.date}">
+        <input type="text" value="${h.name}" placeholder="Nombre">
+        <button class="remove">Eliminar</button>
+      `;
+
+      row.querySelector('button').onclick = () => row.remove();
+
+      root.append(row);
+    });
+}
+
+function exceptionRow(
+  e = {
+    date: '',
+    type: 'CLOSE',
+    start: '13:00',
+    end: '15:00',
+    name: ''
+  }
+) {
+  const row = document.createElement('div');
+
+  row.className = 'exception';
+
+  row.innerHTML = `
+    <input type="date" value="${e.date}">
+    <select>
+      <option value="CLOSE_DAY">Cierre todo el día</option>
+      <option value="CLOSE">Cierre por tramo</option>
+      <option value="OPEN">Apertura extraordinaria</option>
+    </select>
+
+    <input class="time" type="time" value="${e.start || '13:00'}">
+    <input class="time" type="time" value="${e.end || '15:00'}">
+
+    <input type="text" value="${e.name}" placeholder="Motivo">
+
+    <button class="remove">Eliminar</button>
+  `;
+
+  const select = row.querySelector('select');
+
+  select.value = e.type;
+
+  const toggle = () => {
+    row.classList.toggle(
+      'full-day',
+      select.value === 'CLOSE_DAY'
+    );
+  };
+
+  select.onchange = toggle;
+
+  toggle();
+
+  row.querySelector('button').onclick = () => row.remove();
+
+  return row;
+}
+
+function renderExceptions() {
+  const root = el('exceptions');
+  root.innerHTML = '';
+
+  config.exceptions
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .forEach(e => {
+      root.append(exceptionRow(e));
+    });
+}
+
+function renderGroups() {
+  const selector = el('groupSelector');
+
+  selector.innerHTML = '';
+
+  groups.forEach(group => {
+    const option = document.createElement('option');
+
+    option.value = group.caseId;
+    option.textContent =
+      `${group.name} · Case ${group.caseId}`;
+
+    selector.append(option);
+  });
+
+  selector.value = currentCaseId;
+}
+
+function collect() {
+  document.querySelectorAll('.day').forEach(box => {
+    config.weekly[box.dataset.day] =
+      [...box.querySelectorAll('.interval')]
+        .map(r => ({
+          start: r.children[0].value,
+          end: r.children[1].value
+        }));
+  });
+
+  config.holidays =
+    [...document.querySelectorAll('.holiday')]
+      .map(r => ({
+        date: r.children[0].value,
+        name: r.children[1].value
+      }))
+      .filter(h => h.date && h.name);
+
+  config.exceptions =
+    [...document.querySelectorAll('.exception')]
+      .map(r => {
+        const e = {
+          date: r.children[0].value,
+          type: r.children[1].value,
+          start: r.children[2].value,
+          end: r.children[3].value,
+          name: r.children[4].value
+        };
+
+        if (e.type === 'CLOSE_DAY') {
+          delete e.start;
+          delete e.end;
+        }
+
+        return e;
+      })
+      .filter(e => e.date && e.name);
+}
+
+async function loadGroup(caseId) {
+  currentCaseId = String(caseId);
+
+  config = await request(
+    `/api/config?caseId=${encodeURIComponent(currentCaseId)}`
+  );
+
+  config.exceptions = config.exceptions || [];
+  config.holidays = config.holidays || [];
+
+  renderWeek();
+  renderHolidays();
+  renderExceptions();
+  renderGroups();
+
+  await refresh();
+}
+
+async function refresh() {
+  const s = await request(
+    `/api/status?caseId=${encodeURIComponent(currentCaseId)}`
+  );
+
+  el('status').textContent =
+    `${s.isOpen ? 'ABIERTO' : 'CERRADO'} · ${s.localDate} ${s.localTime}`;
+
+  el('status').className =
+    `status ${s.isOpen ? 'open' : 'closed'}`;
+
+  el('endpoint').textContent =
+    `GET /api/status?caseId=${currentCaseId}`;
+
+  el('sample').textContent =
+    JSON.stringify(s, null, 2);
+}
+
+el('groupSelector').onchange = async event => {
+  try {
+    await loadGroup(event.target.value);
+  } catch (error) {
+    alert(error.message);
+  }
+};
+
+el('addHoliday').onclick = () => {
+  config.holidays.push({
+    date: '',
+    name: ''
+  });
+
+  renderHolidays();
+};
+
+el('addException').onclick = () => {
+  el('exceptions').append(
+    exceptionRow()
+  );
+};
+
+el('save').onclick = async () => {
+  try {
+    collect();
+
+    await request(
+      `/api/config?caseId=${encodeURIComponent(currentCaseId)}`,
+      {
+        method: 'PUT',
+        headers: {
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify(config)
+      }
+    );
+
+    await refresh();
+
+    alert('Configuración guardada');
+
+  } catch (error) {
+    alert(error.message);
+  }
+};
+
+(async () => {
+  groups = await request('/api/config?groups=true');
+
+  if (!groups.length) {
+    throw new Error('No existen grupos de planificación');
+  }
+
+  currentCaseId = String(groups[0].caseId);
+
+  renderGroups();
+
+  await loadGroup(currentCaseId);
+
+  setInterval(refresh, 60000);
+
+})().catch(error => {
+  alert(error.message);
+});
