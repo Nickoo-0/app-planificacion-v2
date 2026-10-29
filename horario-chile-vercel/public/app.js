@@ -201,6 +201,78 @@ function collect() {
       .filter(e => e.date && e.name);
 }
 
+async function renderSchedulePreview() {
+  const date = el('previewDate').value;
+  const root = el('schedulePreview');
+
+  if (!date) {
+    root.innerHTML = '';
+    return;
+  }
+
+  const times = [
+    '00:00',
+    '06:00',
+    '08:00',
+    '09:00',
+    '10:00',
+    '11:00',
+    '12:00',
+    '13:00',
+    '14:00',
+    '15:00',
+    '16:00',
+    '17:00',
+    '18:00',
+    '19:00',
+    '23:00'
+  ];
+
+  const results = [];
+
+  for (const time of times) {
+    const at = `${date}T${time}:00-03:00`;
+
+    try {
+      const status = await request(
+        `/api/status?caseId=${encodeURIComponent(currentCaseId)}&at=${encodeURIComponent(at)}`
+      );
+
+      results.push({
+        time,
+        isOpen: status.isOpen,
+        reason: status.reason
+      });
+    } catch (error) {
+      results.push({
+        time,
+        isOpen: false,
+        reason: 'ERROR'
+      });
+    }
+  }
+
+  root.innerHTML = '';
+
+  results.forEach(item => {
+    const row = document.createElement('div');
+
+    row.style.padding = '8px 0';
+    row.style.borderBottom = '1px solid #dce3ee';
+
+    row.innerHTML = `
+      <strong>${item.time}</strong>
+      ·
+      <span style="color:${item.isOpen ? '#126b3a' : '#a12727'}">
+        ${item.isOpen ? 'ABIERTO' : 'CERRADO'}
+      </span>
+      · ${item.reason}
+    `;
+
+    root.append(row);
+  });
+}
+
 async function loadGroup(caseId) {
   currentCaseId = String(caseId);
 
@@ -210,14 +282,18 @@ async function loadGroup(caseId) {
 
   config.exceptions = config.exceptions || [];
   config.holidays = config.holidays || [];
-  
+
   el('groupInfo').textContent =
-  `${config.name} · Intent ID ${config.intentId} · Case ID ${config.caseId}`;
+    `${config.name} · Intent ID ${config.intentId} · Case ID ${config.caseId}`;
 
   renderWeek();
   renderHolidays();
   renderExceptions();
   renderGroups();
+
+  if (el('previewDate').value) {
+    await renderSchedulePreview();
+  }
 
   await refresh();
 }
@@ -263,6 +339,14 @@ el('addException').onclick = () => {
   );
 };
 
+el('previewDate').onchange = async () => {
+  try {
+    await renderSchedulePreview();
+  } catch (error) {
+    alert(error.message);
+  }
+};
+
 el('save').onclick = async () => {
   try {
     collect();
@@ -278,6 +362,10 @@ el('save').onclick = async () => {
       }
     );
 
+    if (el('previewDate').value) {
+      await renderSchedulePreview();
+    }
+
     await refresh();
 
     alert('Configuración guardada');
@@ -286,6 +374,7 @@ el('save').onclick = async () => {
     alert(error.message);
   }
 };
+
 el('newGroup').onclick = async () => {
   try {
     const name = prompt('Nombre del grupo de planificación:');
