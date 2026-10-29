@@ -210,6 +210,9 @@ async function loadGroup(caseId) {
 
   config.exceptions = config.exceptions || [];
   config.holidays = config.holidays || [];
+  
+  el('groupInfo').textContent =
+  `${config.name} · Intent ID ${config.intentId} · Case ID ${config.caseId}`;
 
   renderWeek();
   renderHolidays();
