@@ -283,6 +283,62 @@ el('save').onclick = async () => {
     alert(error.message);
   }
 };
+el('newGroup').onclick = async () => {
+  try {
+    const name = prompt('Nombre del grupo de planificación:');
+    if (!name || !name.trim()) return;
+
+    const intentId = prompt('Intent ID de Lynn:');
+    if (!intentId || !intentId.trim()) return;
+
+    const caseId = prompt('Case ID de Lynn:');
+    if (!caseId || !caseId.trim()) return;
+
+    const newGroup = {
+      name: name.trim(),
+      intentId: intentId.trim(),
+      caseId: caseId.trim(),
+      timeZone: 'America/Santiago',
+
+      weekly: {
+        '0': [],
+        '1': [{ start: '08:30', end: '18:30' }],
+        '2': [{ start: '08:30', end: '18:30' }],
+        '3': [{ start: '08:30', end: '18:30' }],
+        '4': [{ start: '08:30', end: '18:30' }],
+        '5': [{ start: '08:30', end: '14:30' }],
+        '6': []
+      },
+
+      holidays: [],
+      exceptions: []
+    };
+
+    const result = await request(
+      '/api/config?groups=true',
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify(newGroup)
+      }
+    );
+
+    groups.push(result.config);
+
+    currentCaseId = String(result.config.caseId);
+
+    renderGroups();
+
+    await loadGroup(currentCaseId);
+
+    alert('Grupo de planificación creado');
+
+  } catch (error) {
+    alert(error.message);
+  }
+};
 
 (async () => {
   groups = await request('/api/config?groups=true');
