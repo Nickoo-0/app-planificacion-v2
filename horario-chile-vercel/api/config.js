@@ -16,9 +16,71 @@ module.exports = async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
 
     const caseId = req.query.caseId;
+    const groupsMode = req.query.groups === 'true';
+
+    // Listar o crear grupos
+    if (groupsMode) {
+
+      if (req.method === 'GET') {
+        return res.status(200).json(await getGroups());
+      }
+
+      if (req.method === 'POST') {
+        const groups = await getGroups();
+        const newGroup = req.body;
+
+        if (
+          !newGroup ||
+          !newGroup.caseId ||
+          !newGroup.intentId ||
+          !newGroup.name
+        ) {
+          return res.status(400).json({
+            error: 'name, intentId y caseId son obligatorios'
+          });
+        }
+
+        const exists = groups.some(
+          group =>
+            String(group.caseId) === String(newGroup.caseId)
+        );
+
+        if (exists) {
+          return res.status(409).json({
+            error: 'El Case ID ya está asociado a un grupo'
+          });
+        }
+
+        const group = {
+          ...newGroup,
+          id: String(newGroup.caseId),
+          caseId: String(newGroup.caseId),
+          intentId: String(newGroup.intentId)
+        };
+
+        const error = validate(group);
+
+        if (error) {
+          return res.status(400).json({ error });
+        }
+
+        groups.push(group);
+        await setGroups(groups);
+
+        return res.status(201).json({
+          ok: true,
+          config: group
+        });
+      }
+
+      return res.status(405).json({
+        error: 'Método no permitido'
+      });
+    }
 
     // Compatibilidad con la configuración original
     if (!caseId) {
+
       if (req.method === 'GET') {
         return res.status(200).json(await getConfig());
       }
@@ -43,7 +105,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Administración por Case ID
+    // Consultar o actualizar un grupo por Case ID
     const groups = await getGroups();
 
     const index = groups.findIndex(
@@ -51,6 +113,7 @@ module.exports = async function handler(req, res) {
     );
 
     if (req.method === 'GET') {
+
       if (index === -1) {
         return res.status(404).json({
           error: 'CASE_NOT_FOUND',
@@ -62,6 +125,7 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'PUT') {
+
       if (index === -1) {
         return res.status(404).json({
           error: 'CASE_NOT_FOUND',
@@ -72,6 +136,7 @@ module.exports = async function handler(req, res) {
       const updated = {
         ...groups[index],
         ...req.body,
+        id: String(caseId),
         caseId: String(caseId)
       };
 
@@ -82,7 +147,6 @@ module.exports = async function handler(req, res) {
       }
 
       groups[index] = updated;
-
       await setGroups(groups);
 
       return res.status(200).json({
@@ -101,6 +165,8 @@ module.exports = async function handler(req, res) {
         ? 'Configura UPSTASH_REDIS_REST_KV_REST_API_URL y UPSTASH_REDIS_REST_KV_REST_API_TOKEN en Vercel'
         : error.message;
 
-    return res.status(500).json({ error: message });
+    return res.status(500).json({
+      error: message
+    });
   }
 };
