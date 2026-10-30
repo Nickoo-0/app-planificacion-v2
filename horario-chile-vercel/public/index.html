@@ -34,15 +34,11 @@
       </button>
     </div>
 
-    <div>
-      <label for="groupSelector">
-        Grupo activo
-      </label>
+    <label for="groupSelector">Grupo activo</label>
 
-      <select id="groupSelector">
-      </select>
-      <p id="groupInfo"></p>
-    </div>
+    <select id="groupSelector"></select>
+
+    <p id="groupInfo" class="group-info"></p>
   </section>
 
   <section class="card">
@@ -52,9 +48,7 @@
         <p>Define uno o más tramos hábiles por día.</p>
       </div>
 
-      <button id="save">
-        Guardar cambios
-      </button>
+      <button id="save">Guardar cambios</button>
     </div>
 
     <div id="week" class="week"></div>
@@ -89,24 +83,59 @@
 
     <div id="exceptions"></div>
   </section>
-<section class="card">
-  <div class="section-title">
-    <div>
-      <h2>Vista de planificación efectiva</h2>
-      <p>
-        Visualiza cómo quedará el horario considerando
-        el horario semanal, feriados y excepciones.
-      </p>
+
+  <section class="card calendar-card">
+    <div class="section-title calendar-header">
+      <div>
+        <h2>Vista de planificación efectiva</h2>
+        <p>Resultado combinado del horario semanal, feriados y excepciones.</p>
+      </div>
+
+      <div class="calendar-modes">
+        <button id="weekMode" class="calendar-mode active" type="button">
+          Semana
+        </button>
+
+        <button id="dayMode" class="calendar-mode" type="button">
+          Día
+        </button>
+      </div>
     </div>
-  </div>
 
-  <div>
-    <label for="previewDate">Fecha a visualizar</label>
-    <input id="previewDate" type="date">
-  </div>
+    <div class="calendar-toolbar">
+      <div class="calendar-navigation">
+        <button id="previousPeriod" class="secondary" type="button">
+          ‹
+        </button>
 
-  <div id="schedulePreview"></div>
-</section>
+        <button id="todayPeriod" class="secondary" type="button">
+          Hoy
+        </button>
+
+        <button id="nextPeriod" class="secondary" type="button">
+          ›
+        </button>
+      </div>
+
+      <strong id="calendarPeriod"></strong>
+
+      <div>
+        <label for="previewDate">Fecha</label>
+        <input id="previewDate" type="date">
+      </div>
+    </div>
+
+    <div class="calendar-legend">
+      <span><i class="legend-open"></i> Horario hábil</span>
+      <span><i class="legend-close"></i> Cierre excepcional</span>
+      <span><i class="legend-special"></i> Apertura extraordinaria</span>
+      <span><i class="legend-holiday"></i> Feriado o cierre total</span>
+      <span><i class="legend-outside"></i> Fuera de horario</span>
+    </div>
+
+    <div id="schedulePreview" class="schedule-calendar"></div>
+  </section>
+
   <section class="card">
     <h2>Endpoint para Lynn</h2>
 
