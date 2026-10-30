@@ -22,22 +22,34 @@
 
 <main>
 
-  <section class="card">
-    <div class="section-title">
-      <div>
-        <h2>Grupo de planificación</h2>
-        <p>Selecciona la planificación asociada a un caso de Lynn.</p>
-      </div>
+<section class="card group-card">
 
-      <div>
-  <button id="deleteGroup" class="remove" type="button">
-    Eliminar grupo
-  </button>
+  <div class="group-header">
+    <div>
+      <h2>Grupo de planificación</h2>
+      <p>Selecciona la planificación asociada a un caso de Lynn.</p>
+    </div>
 
-  <button id="newGroup" class="secondary" type="button">
-    + Nuevo grupo
-  </button>
-</div>
+    <div class="group-actions">
+      <button id="deleteGroup" class="delete-group" type="button">
+        Eliminar grupo
+      </button>
+
+      <button id="newGroup" class="secondary" type="button">
+        + Nuevo grupo
+      </button>
+    </div>
+  </div>
+
+  <div class="group-selector-container">
+    <label for="groupSelector">Grupo activo</label>
+
+    <select id="groupSelector"></select>
+
+    <p id="groupInfo" class="group-info"></p>
+  </div>
+
+</section>
 
     <label for="groupSelector">Grupo activo</label>
 
