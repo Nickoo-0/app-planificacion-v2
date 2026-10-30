@@ -155,38 +155,71 @@ if (req.method === 'DELETE') {
 
     if (req.method === 'PUT') {
 
-      if (index === -1) {
-        return res.status(404).json({
-          error: 'CASE_NOT_FOUND',
-          caseId: String(caseId)
-        });
-      }
-
-      const updated = {
-        ...groups[index],
-        ...req.body,
-        id: String(caseId),
-        caseId: String(caseId)
-      };
-
-      const error = validate(updated);
-
-      if (error) {
-        return res.status(400).json({ error });
-      }
-
-      groups[index] = updated;
-      await setGroups(groups);
-
-      return res.status(200).json({
-        ok: true,
-        config: updated
-      });
-    }
-
-    return res.status(405).json({
-      error: 'Método no permitido'
+  if (index === -1) {
+    return res.status(404).json({
+      error: 'CASE_NOT_FOUND',
+      caseId: String(caseId)
     });
+  }
+
+  const updated = {
+    ...groups[index],
+    ...req.body,
+    id: String(caseId),
+    caseId: String(caseId)
+  };
+
+  const error = validate(updated);
+
+  if (error) {
+    return res.status(400).json({ error });
+  }
+
+  groups[index] = updated;
+
+  await setGroups(groups);
+
+  return res.status(200).json({
+    ok: true,
+    config: updated
+  });
+}
+
+if (req.method === 'DELETE') {
+
+  if (index === -1) {
+    return res.status(404).json({
+      error: 'CASE_NOT_FOUND',
+      caseId: String(caseId)
+    });
+  }
+
+  if (groups.length <= 1) {
+    return res.status(400).json({
+      error: 'No puedes eliminar el único grupo de planificación'
+    });
+  }
+
+  const deleted = groups[index];
+
+  groups.splice(index, 1);
+
+  await setGroups(groups);
+
+  return res.status(200).json({
+    ok: true,
+    deleted: {
+      name: deleted.name,
+      caseId: deleted.caseId,
+      intentId: deleted.intentId
+    }
+  });
+}
+
+return res.status(405).json({
+  error: 'Método no permitido'
+});
+
 
   } catch (error) {
     const message =
