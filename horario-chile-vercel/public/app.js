@@ -18,8 +18,8 @@ const shortNames = [
   'Sáb'
 ];
 
-const VISIBLE_START = 6 * 60;
-const VISIBLE_END = 22 * 60;
+const VISIBLE_START = 0;
+const VISIBLE_END = 24 * 60;
 const HOUR_HEIGHT = 48;
 
 let config;
@@ -482,7 +482,7 @@ function createTimeColumn() {
 
   for (
     let minute = VISIBLE_START;
-    minute <= VISIBLE_END;
+    minute < VISIBLE_END;
     minute += 60
   ) {
     const label = document.createElement('span');
@@ -524,7 +524,7 @@ function createDayColumn(date) {
 
   for (
     let minute = VISIBLE_START;
-    minute <= VISIBLE_END;
+    minute < VISIBLE_END;
     minute += 60
   ) {
     const line = document.createElement('div');
