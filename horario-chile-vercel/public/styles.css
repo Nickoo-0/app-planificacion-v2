@@ -440,3 +440,68 @@ pre{
     align-self:flex-start
   }
 }
+.group-card{
+  padding:26px 30px
+}
+
+.group-header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:24px;
+  margin-bottom:24px
+}
+
+.group-header h2{
+  font-size:22px
+}
+
+.group-header p{
+  margin-top:5px
+}
+
+.group-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-shrink:0
+}
+
+.delete-group{
+  background:#fff0f0;
+  color:#b42318;
+  border:1px solid #fecaca
+}
+
+.group-selector-container{
+  max-width:720px
+}
+
+.group-selector-container #groupSelector{
+  width:100%;
+  max-width:none
+}
+
+.group-info{
+  margin-top:10px;
+  font-size:14px;
+  color:#667085
+}
+
+@media(max-width:700px){
+  .group-header{
+    flex-direction:column
+  }
+
+  .group-actions{
+    width:100%
+  }
+
+  .group-actions button{
+    flex:1
+  }
+
+  .group-selector-container{
+    max-width:none
+  }
+}
