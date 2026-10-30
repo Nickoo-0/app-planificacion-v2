@@ -1,18 +1,96 @@
-const names = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const names = [
+  'Domingo',
+  'Lunes',
+  'Martes',
+  'Miércoles',
+  'Jueves',
+  'Viernes',
+  'Sábado'
+];
+
+const shortNames = [
+  'Dom',
+  'Lun',
+  'Mar',
+  'Mié',
+  'Jue',
+  'Vie',
+  'Sáb'
+];
+
+const VISIBLE_START = 6 * 60;
+const VISIBLE_END = 22 * 60;
+const HOUR_HEIGHT = 48;
 
 let config;
 let groups = [];
 let currentCaseId = '245999';
+let calendarMode = 'week';
+let calendarDate = startOfLocalDay(new Date());
 
 const el = id => document.getElementById(id);
 
 async function request(url, options) {
-  const r = await fetch(url, options);
-  const j = await r.json();
+  const response = await fetch(url, options);
+  const data = await response.json();
 
-  if (!r.ok) throw new Error(j.error || 'Error');
+  if (!response.ok) {
+    throw new Error(data.error || 'Error');
+  }
 
-  return j;
+  return data;
+}
+
+function pad(value) {
+  return String(value).padStart(2, '0');
+}
+
+function formatDateValue(date) {
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate())
+  ].join('-');
+}
+
+function parseDateValue(value) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0, 0);
+}
+
+function startOfLocalDay(date) {
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    12,
+    0,
+    0,
+    0
+  );
+}
+
+function addDays(date, amount) {
+  const result = new Date(date);
+  result.setDate(result.getDate() + amount);
+  return startOfLocalDay(result);
+}
+
+function startOfWeek(date) {
+  return addDays(date, -date.getDay());
+}
+
+function toMinutes(value) {
+  const [hours, minutes] = value.split(':').map(Number);
+  return (hours * 60) + minutes;
+}
+
+function minutesToTime(minutes) {
+  const normalized = Math.max(0, Math.min(1440, minutes));
+  const hours = Math.floor(normalized / 60);
+  const mins = normalized % 60;
+
+  return `${pad(hours)}:${pad(mins)}`;
 }
 
 function interval(item = { start: '08:30', end: '18:30' }) {
@@ -22,7 +100,7 @@ function interval(item = { start: '08:30', end: '18:30' }) {
   row.innerHTML = `
     <input type="time" value="${item.start}">
     <input type="time" value="${item.end}">
-    <button class="remove">×</button>
+    <button class="remove" type="button">×</button>
   `;
 
   row.querySelector('button').onclick = () => row.remove();
@@ -44,13 +122,14 @@ function renderWeek() {
     box.innerHTML = `
       <h3>${names[day]}</h3>
       <div class="intervals"></div>
-      <button class="add">+ Tramo</button>
+      <button class="add" type="button">+ Tramo</button>
     `;
 
     const list = box.querySelector('.intervals');
+    const intervals = config.weekly[String(day)] || [];
 
-    config.weekly[day].forEach(i => {
-      list.append(interval(i));
+    intervals.forEach(item => {
+      list.append(interval(item));
     });
 
     box.querySelector('.add').onclick = () => {
@@ -67,15 +146,14 @@ function renderHolidays() {
 
   config.holidays
     .sort((a, b) => a.date.localeCompare(b.date))
-    .forEach(h => {
+    .forEach(holiday => {
       const row = document.createElement('div');
-
       row.className = 'holiday';
 
       row.innerHTML = `
-        <input type="date" value="${h.date}">
-        <input type="text" value="${h.name}" placeholder="Nombre">
-        <button class="remove">Eliminar</button>
+        <input type="date" value="${holiday.date}">
+        <input type="text" value="${holiday.name}" placeholder="Nombre">
+        <button class="remove" type="button">Eliminar</button>
       `;
 
       row.querySelector('button').onclick = () => row.remove();
@@ -85,7 +163,7 @@ function renderHolidays() {
 }
 
 function exceptionRow(
-  e = {
+  exception = {
     date: '',
     type: 'CLOSE',
     start: '13:00',
@@ -94,28 +172,40 @@ function exceptionRow(
   }
 ) {
   const row = document.createElement('div');
-
   row.className = 'exception';
 
   row.innerHTML = `
-    <input type="date" value="${e.date}">
+    <input type="date" value="${exception.date}">
+
     <select>
       <option value="CLOSE_DAY">Cierre todo el día</option>
       <option value="CLOSE">Cierre por tramo</option>
       <option value="OPEN">Apertura extraordinaria</option>
     </select>
 
-    <input class="time" type="time" value="${e.start || '13:00'}">
-    <input class="time" type="time" value="${e.end || '15:00'}">
+    <input
+      class="time"
+      type="time"
+      value="${exception.start || '13:00'}"
+    >
 
-    <input type="text" value="${e.name}" placeholder="Motivo">
+    <input
+      class="time"
+      type="time"
+      value="${exception.end || '15:00'}"
+    >
 
-    <button class="remove">Eliminar</button>
+    <input
+      type="text"
+      value="${exception.name}"
+      placeholder="Motivo"
+    >
+
+    <button class="remove" type="button">Eliminar</button>
   `;
 
   const select = row.querySelector('select');
-
-  select.value = e.type;
+  select.value = exception.type;
 
   const toggle = () => {
     row.classList.toggle(
@@ -125,10 +215,9 @@ function exceptionRow(
   };
 
   select.onchange = toggle;
-
   toggle();
 
-  row.querySelector('button').onclick = () => row.remove();
+  row.querySelector('.remove').onclick = () => row.remove();
 
   return row;
 }
@@ -139,14 +228,13 @@ function renderExceptions() {
 
   config.exceptions
     .sort((a, b) => a.date.localeCompare(b.date))
-    .forEach(e => {
-      root.append(exceptionRow(e));
+    .forEach(exception => {
+      root.append(exceptionRow(exception));
     });
 }
 
 function renderGroups() {
   const selector = el('groupSelector');
-
   selector.innerHTML = '';
 
   groups.forEach(group => {
@@ -166,111 +254,358 @@ function collect() {
   document.querySelectorAll('.day').forEach(box => {
     config.weekly[box.dataset.day] =
       [...box.querySelectorAll('.interval')]
-        .map(r => ({
-          start: r.children[0].value,
-          end: r.children[1].value
+        .map(row => ({
+          start: row.children[0].value,
+          end: row.children[1].value
         }));
   });
 
   config.holidays =
     [...document.querySelectorAll('.holiday')]
-      .map(r => ({
-        date: r.children[0].value,
-        name: r.children[1].value
+      .map(row => ({
+        date: row.children[0].value,
+        name: row.children[1].value
       }))
-      .filter(h => h.date && h.name);
+      .filter(holiday => holiday.date && holiday.name);
 
   config.exceptions =
     [...document.querySelectorAll('.exception')]
-      .map(r => {
-        const e = {
-          date: r.children[0].value,
-          type: r.children[1].value,
-          start: r.children[2].value,
-          end: r.children[3].value,
-          name: r.children[4].value
+      .map(row => {
+        const exception = {
+          date: row.children[0].value,
+          type: row.children[1].value,
+          start: row.children[2].value,
+          end: row.children[3].value,
+          name: row.children[4].value
         };
 
-        if (e.type === 'CLOSE_DAY') {
-          delete e.start;
-          delete e.end;
+        if (exception.type === 'CLOSE_DAY') {
+          delete exception.start;
+          delete exception.end;
         }
 
-        return e;
+        return exception;
       })
-      .filter(e => e.date && e.name);
+      .filter(exception => exception.date && exception.name);
 }
 
-async function renderSchedulePreview() {
-  const date = el('previewDate').value;
-  const root = el('schedulePreview');
+function statusAt(date, minute) {
+  const dateValue = formatDateValue(date);
+  const day = date.getDay();
 
-  if (!date) {
-    root.innerHTML = '';
-    return;
+  const exceptions = (config.exceptions || [])
+    .filter(item => item.date === dateValue);
+
+  const fullClose = exceptions.find(
+    item => item.type === 'CLOSE_DAY'
+  );
+
+  const partialClose = exceptions.find(
+    item =>
+      item.type === 'CLOSE' &&
+      minute >= toMinutes(item.start) &&
+      minute < toMinutes(item.end)
+  );
+
+  const specialOpen = exceptions.find(
+    item =>
+      item.type === 'OPEN' &&
+      minute >= toMinutes(item.start) &&
+      minute < toMinutes(item.end)
+  );
+
+  const holiday = (config.holidays || [])
+    .find(item => item.date === dateValue);
+
+  const weeklyIntervals =
+    config.weekly[String(day)] || [];
+
+  const weeklyOpen = weeklyIntervals.find(
+    item =>
+      minute >= toMinutes(item.start) &&
+      minute < toMinutes(item.end)
+  );
+
+  if (fullClose) {
+    return {
+      type: 'holiday',
+      label: fullClose.name,
+      reason: 'Cierre todo el día'
+    };
   }
 
-  const times = [
-    '00:00',
-    '06:00',
-    '08:00',
-    '09:00',
-    '10:00',
-    '11:00',
-    '12:00',
-    '13:00',
-    '14:00',
-    '15:00',
-    '16:00',
-    '17:00',
-    '18:00',
-    '19:00',
-    '23:00'
-  ];
+  if (partialClose) {
+    return {
+      type: 'close',
+      label: partialClose.name,
+      reason: 'Cierre excepcional'
+    };
+  }
 
-  const results = [];
+  if (specialOpen) {
+    return {
+      type: 'special',
+      label: specialOpen.name,
+      reason: 'Apertura extraordinaria'
+    };
+  }
 
-  for (const time of times) {
-    const at = `${date}T${time}:00-03:00`;
+  if (holiday) {
+    return {
+      type: 'holiday',
+      label: holiday.name,
+      reason: 'Feriado'
+    };
+  }
 
-    try {
-      const status = await request(
-        `/api/status?caseId=${encodeURIComponent(currentCaseId)}&at=${encodeURIComponent(at)}`
-      );
+  if (weeklyOpen) {
+    return {
+      type: 'open',
+      label: 'Horario hábil',
+      reason: 'Horario semanal'
+    };
+  }
 
-      results.push({
-        time,
-        isOpen: status.isOpen,
-        reason: status.reason
-      });
-    } catch (error) {
-      results.push({
-        time,
-        isOpen: false,
-        reason: 'ERROR'
+  return {
+    type: 'outside',
+    label: 'Fuera de horario',
+    reason: 'Cerrado'
+  };
+}
+
+function buildSegments(date) {
+  const dateValue = formatDateValue(date);
+  const boundaries = new Set([
+    VISIBLE_START,
+    VISIBLE_END
+  ]);
+
+  const weeklyIntervals =
+    config.weekly[String(date.getDay())] || [];
+
+  weeklyIntervals.forEach(item => {
+    boundaries.add(toMinutes(item.start));
+    boundaries.add(toMinutes(item.end));
+  });
+
+  (config.exceptions || [])
+    .filter(item => item.date === dateValue)
+    .forEach(item => {
+      if (item.type !== 'CLOSE_DAY') {
+        boundaries.add(toMinutes(item.start));
+        boundaries.add(toMinutes(item.end));
+      }
+    });
+
+  const ordered = [...boundaries]
+    .filter(value =>
+      value >= VISIBLE_START &&
+      value <= VISIBLE_END
+    )
+    .sort((a, b) => a - b);
+
+  const segments = [];
+
+  for (let index = 0; index < ordered.length - 1; index++) {
+    const start = ordered[index];
+    const end = ordered[index + 1];
+
+    if (start === end) continue;
+
+    const status = statusAt(
+      date,
+      start + Math.floor((end - start) / 2)
+    );
+
+    const last = segments[segments.length - 1];
+
+    if (
+      last &&
+      last.type === status.type &&
+      last.label === status.label &&
+      last.end === start
+    ) {
+      last.end = end;
+    } else {
+      segments.push({
+        start,
+        end,
+        ...status
       });
     }
   }
 
-  root.innerHTML = '';
+  return segments;
+}
 
-  results.forEach(item => {
-    const row = document.createElement('div');
+function visibleDates() {
+  if (calendarMode === 'day') {
+    return [calendarDate];
+  }
 
-    row.style.padding = '8px 0';
-    row.style.borderBottom = '1px solid #dce3ee';
+  const start = startOfWeek(calendarDate);
 
-    row.innerHTML = `
-      <strong>${item.time}</strong>
-      ·
-      <span style="color:${item.isOpen ? '#126b3a' : '#a12727'}">
-        ${item.isOpen ? 'ABIERTO' : 'CERRADO'}
-      </span>
-      · ${item.reason}
-    `;
+  return Array.from(
+    { length: 7 },
+    (_, index) => addDays(start, index)
+  );
+}
 
-    root.append(row);
+function renderCalendarPeriod(dates) {
+  const formatter = new Intl.DateTimeFormat('es-CL', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
   });
+
+  if (calendarMode === 'day') {
+    el('calendarPeriod').textContent =
+      formatter.format(dates[0]);
+
+    return;
+  }
+
+  el('calendarPeriod').textContent =
+    `${formatter.format(dates[0])} al ${formatter.format(dates[6])}`;
+}
+
+function createTimeColumn() {
+  const column = document.createElement('div');
+  column.className = 'calendar-time-column';
+
+  const header = document.createElement('div');
+  header.className = 'calendar-time-header';
+  column.append(header);
+
+  const body = document.createElement('div');
+  body.className = 'calendar-time-body';
+
+  for (
+    let minute = VISIBLE_START;
+    minute <= VISIBLE_END;
+    minute += 60
+  ) {
+    const label = document.createElement('span');
+
+    label.style.top =
+      `${((minute - VISIBLE_START) / 60) * HOUR_HEIGHT}px`;
+
+    label.textContent = minutesToTime(minute);
+
+    body.append(label);
+  }
+
+  column.append(body);
+
+  return column;
+}
+
+function createDayColumn(date) {
+  const column = document.createElement('div');
+  column.className = 'calendar-day-column';
+
+  const header = document.createElement('div');
+  header.className = 'calendar-day-header';
+
+  const today = formatDateValue(new Date());
+  const current = formatDateValue(date);
+
+  if (today === current) {
+    header.classList.add('today');
+  }
+
+  header.innerHTML = `
+    <strong>${shortNames[date.getDay()]}</strong>
+    <span>${pad(date.getDate())}/${pad(date.getMonth() + 1)}</span>
+  `;
+
+  const body = document.createElement('div');
+  body.className = 'calendar-day-body';
+
+  for (
+    let minute = VISIBLE_START;
+    minute <= VISIBLE_END;
+    minute += 60
+  ) {
+    const line = document.createElement('div');
+    line.className = 'calendar-hour-line';
+
+    line.style.top =
+      `${((minute - VISIBLE_START) / 60) * HOUR_HEIGHT}px`;
+
+    body.append(line);
+  }
+
+  buildSegments(date).forEach(segment => {
+    const block = document.createElement('div');
+
+    const start = Math.max(segment.start, VISIBLE_START);
+    const end = Math.min(segment.end, VISIBLE_END);
+
+    const top =
+      ((start - VISIBLE_START) / 60) * HOUR_HEIGHT;
+
+    const height =
+      ((end - start) / 60) * HOUR_HEIGHT;
+
+    block.className =
+      `calendar-block calendar-block-${segment.type}`;
+
+    block.style.top = `${top}px`;
+    block.style.height = `${Math.max(height, 2)}px`;
+
+    const showText =
+      segment.type !== 'outside' &&
+      height >= 22;
+
+    if (showText) {
+      block.innerHTML = `
+        <strong>
+          ${minutesToTime(segment.start)} - ${minutesToTime(segment.end)}
+        </strong>
+        <span>${segment.label}</span>
+      `;
+    }
+
+    block.title =
+      `${minutesToTime(segment.start)} - ${minutesToTime(segment.end)} · ${segment.label}`;
+
+    body.append(block);
+  });
+
+  column.append(header);
+  column.append(body);
+
+  return column;
+}
+
+function renderSchedulePreview() {
+  const root = el('schedulePreview');
+  const dates = visibleDates();
+
+  root.innerHTML = '';
+  root.classList.toggle(
+    'day-view',
+    calendarMode === 'day'
+  );
+
+  renderCalendarPeriod(dates);
+
+  const grid = document.createElement('div');
+  grid.className = 'calendar-grid';
+
+  grid.style.gridTemplateColumns =
+    calendarMode === 'day'
+      ? '72px minmax(260px, 1fr)'
+      : '72px repeat(7, minmax(130px, 1fr))';
+
+  grid.append(createTimeColumn());
+
+  dates.forEach(date => {
+    grid.append(createDayColumn(date));
+  });
+
+  root.append(grid);
 }
 
 async function loadGroup(caseId) {
@@ -290,30 +625,43 @@ async function loadGroup(caseId) {
   renderHolidays();
   renderExceptions();
   renderGroups();
-
-  if (el('previewDate').value) {
-    await renderSchedulePreview();
-  }
+  renderSchedulePreview();
 
   await refresh();
 }
 
 async function refresh() {
-  const s = await request(
+  const status = await request(
     `/api/status?caseId=${encodeURIComponent(currentCaseId)}`
   );
 
   el('status').textContent =
-    `${s.isOpen ? 'ABIERTO' : 'CERRADO'} · ${s.localDate} ${s.localTime}`;
+    `${status.isOpen ? 'ABIERTO' : 'CERRADO'} · ${status.localDate} ${status.localTime}`;
 
   el('status').className =
-    `status ${s.isOpen ? 'open' : 'closed'}`;
+    `status ${status.isOpen ? 'open' : 'closed'}`;
 
   el('endpoint').textContent =
     `GET /api/status?caseId=${currentCaseId}`;
 
   el('sample').textContent =
-    JSON.stringify(s, null, 2);
+    JSON.stringify(status, null, 2);
+}
+
+function setCalendarMode(mode) {
+  calendarMode = mode;
+
+  el('weekMode').classList.toggle(
+    'active',
+    mode === 'week'
+  );
+
+  el('dayMode').classList.toggle(
+    'active',
+    mode === 'day'
+  );
+
+  renderSchedulePreview();
 }
 
 el('groupSelector').onchange = async event => {
@@ -339,12 +687,52 @@ el('addException').onclick = () => {
   );
 };
 
-el('previewDate').onchange = async () => {
-  try {
-    await renderSchedulePreview();
-  } catch (error) {
-    alert(error.message);
-  }
+el('previewDate').onchange = event => {
+  if (!event.target.value) return;
+
+  calendarDate = parseDateValue(event.target.value);
+  renderSchedulePreview();
+};
+
+el('weekMode').onclick = () => {
+  setCalendarMode('week');
+};
+
+el('dayMode').onclick = () => {
+  setCalendarMode('day');
+};
+
+el('previousPeriod').onclick = () => {
+  calendarDate = addDays(
+    calendarDate,
+    calendarMode === 'week' ? -7 : -1
+  );
+
+  el('previewDate').value =
+    formatDateValue(calendarDate);
+
+  renderSchedulePreview();
+};
+
+el('nextPeriod').onclick = () => {
+  calendarDate = addDays(
+    calendarDate,
+    calendarMode === 'week' ? 7 : 1
+  );
+
+  el('previewDate').value =
+    formatDateValue(calendarDate);
+
+  renderSchedulePreview();
+};
+
+el('todayPeriod').onclick = () => {
+  calendarDate = startOfLocalDay(new Date());
+
+  el('previewDate').value =
+    formatDateValue(calendarDate);
+
+  renderSchedulePreview();
 };
 
 el('save').onclick = async () => {
@@ -362,14 +750,22 @@ el('save').onclick = async () => {
       }
     );
 
-    if (el('previewDate').value) {
-      await renderSchedulePreview();
+    const index = groups.findIndex(
+      group =>
+        String(group.caseId) === currentCaseId
+    );
+
+    if (index !== -1) {
+      groups[index] = {
+        ...groups[index],
+        ...config
+      };
     }
 
+    renderSchedulePreview();
     await refresh();
 
     alert('Configuración guardada');
-
   } catch (error) {
     alert(error.message);
   }
@@ -377,13 +773,18 @@ el('save').onclick = async () => {
 
 el('newGroup').onclick = async () => {
   try {
-    const name = prompt('Nombre del grupo de planificación:');
+    const name = prompt(
+      'Nombre del grupo de planificación:'
+    );
+
     if (!name || !name.trim()) return;
 
     const intentId = prompt('Intent ID de Lynn:');
+
     if (!intentId || !intentId.trim()) return;
 
     const caseId = prompt('Case ID de Lynn:');
+
     if (!caseId || !caseId.trim()) return;
 
     const newGroup = {
@@ -419,14 +820,9 @@ el('newGroup').onclick = async () => {
 
     groups.push(result.config);
 
-    currentCaseId = String(result.config.caseId);
-
-    renderGroups();
-
-    await loadGroup(currentCaseId);
+    await loadGroup(result.config.caseId);
 
     alert('Grupo de planificación creado');
-
   } catch (error) {
     alert(error.message);
   }
@@ -436,17 +832,19 @@ el('newGroup').onclick = async () => {
   groups = await request('/api/config?groups=true');
 
   if (!groups.length) {
-    throw new Error('No existen grupos de planificación');
+    throw new Error(
+      'No existen grupos de planificación'
+    );
   }
 
-  currentCaseId = String(groups[0].caseId);
+  calendarDate = startOfLocalDay(new Date());
 
-  renderGroups();
+  el('previewDate').value =
+    formatDateValue(calendarDate);
 
-  await loadGroup(currentCaseId);
+  await loadGroup(groups[0].caseId);
 
   setInterval(refresh, 60000);
-
 })().catch(error => {
   alert(error.message);
 });
