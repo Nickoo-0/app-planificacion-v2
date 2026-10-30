@@ -770,7 +770,42 @@ el('save').onclick = async () => {
     alert(error.message);
   }
 };
+el('deleteGroup').onclick = async () => {
+  try {
+    const group = groups.find(
+      item => String(item.caseId) === String(currentCaseId)
+    );
 
+    if (!group) return;
+
+    const confirmed = confirm(
+      `¿Eliminar el grupo "${group.name}"?\n\n` +
+      `Intent ID: ${group.intentId}\n` +
+      `Case ID: ${group.caseId}\n\n` +
+      `Esta acción no se puede deshacer.`
+    );
+
+    if (!confirmed) return;
+
+    await request(
+      `/api/config?caseId=${encodeURIComponent(currentCaseId)}`,
+      {
+        method: 'DELETE'
+      }
+    );
+
+    groups = groups.filter(
+      item => String(item.caseId) !== String(currentCaseId)
+    );
+
+    await loadGroup(groups[0].caseId);
+
+    alert('Grupo de planificación eliminado');
+
+  } catch (error) {
+    alert(error.message);
+  }
+};
 el('newGroup').onclick = async () => {
   try {
     const name = prompt(
